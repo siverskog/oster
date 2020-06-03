@@ -12,7 +12,8 @@ oster(
   delta = 1,
   beta = 0,
   within = FALSE,
-  fe = NULL
+  fe = NULL,
+  wvar = FALSE
 )
 }
 \arguments{
@@ -32,6 +33,10 @@ if \code{rm>1} then \code{rmax = r_tilde*rm}, if \code{NULL} (default) then \cod
 \item{within}{logical specifying whether overall r-sqaured (default) or within r-squared is used}
 
 \item{fe}{character vector of names of variables used for calculating within r-squared. Default is to use \code{mcontrols}.}
+
+\item{wvar}{logical specifying whether variances should be weighted. Ignored if
+\code{o.fit} and \code{tilde.fit} do not include weights. Default is \code{FALSE};
+this action is not performed by Stata's \code{psacalc}.}
 }
 \value{
 list containing bias-adjusted beta, bounds on delta and maximum r-squared

@@ -31,6 +31,9 @@
 #' @param beta numeric used to solve for bounds on maximum r-squared and delta. Default is 0.
 #' @param within logical specifying whether overall r-sqaured (default) or within r-squared is used
 #' @param fe character vector of names of variables used for calculating within r-squared. Default is to use \code{mcontrols}.
+#' @param wvar logical specifying whether variances should be weighted. Ignored if
+#'        \code{o.fit} and \code{tilde.fit} do not include weights. Default is \code{FALSE};
+#'        this action is not performed by Stata's \code{psacalc}.
 #' @return list containing bias-adjusted beta, bounds on delta and maximum r-squared
 #'         for beta (and delta) supplied, and other inputs and output
 #' @details If covariates are included in both \code{o.fit} and \code{tilde.fit},
@@ -86,7 +89,7 @@
 #' c(z$input$beta_o, z$input$beta_tilde, z$beta, b13, z$rmax)
 #' 
 #' @export
-oster <- function(o.fit, tilde.fit, varname, rm = NULL, delta = 1, beta = 0, within = FALSE, fe = NULL) {
+oster <- function(o.fit, tilde.fit, varname, rm = NULL, delta = 1, beta = 0, within = FALSE, fe = NULL, wvar = FALSE) {
 
   check_cases <- all(is.element(case.names(o.fit), case.names(tilde.fit))) & all(is.element(case.names(tilde.fit), case.names(o.fit)))
   if(!check_cases) {warning("short and intermediate fit do not include the same cases")}
@@ -99,7 +102,12 @@ oster <- function(o.fit, tilde.fit, varname, rm = NULL, delta = 1, beta = 0, wit
   ### RESIDUALISE X WRT CONTROLS IN INTERMEDIATE (TILDE) FIT ###
 
   tau.fit <- update(o.fit, update(formula(tilde.fit), as.formula(paste(varname, "~ . -", varname))))
-  t_x <- var(tau.fit$residuals)
+  
+  if(wvar & length(tau.fit$weights)>0) {
+    t_x <- weighted.var(tau.fit$residuals, tau.fit$weights)
+  } else {
+    t_x <- var(tau.fit$residuals)
+  }
 
   ### CHECK FOR COVARIATES IN BOTH FITS AND RESIDUALISE X WRT TO THESE ###
 
@@ -109,16 +117,31 @@ oster <- function(o.fit, tilde.fit, varname, rm = NULL, delta = 1, beta = 0, wit
   if(length(m)>0) {
 
     x.fit <- update(o.fit, as.formula(paste(varname, "~", paste(m, collapse = " + "))))
-    sigma_xx <- var(x.fit$residuals)
-
+    
+    if(wvar & length(x.fit$weights)>0) {
+      sigma_xx <- weighted.var(x.fit$residuals, x.fit$weights)
+    } else {
+      sigma_xx <- var(x.fit$residuals)
+    }
+    
   } else {
-
-    sigma_xx <- var(o.fit$model[,varname])
+    
+    if(wvar & length(o.fit$weights)>0) {
+      sigma_xx <- weighted.var(o.fit$model[,varname], o.fit$model[,"(weights)"])
+    } else {
+      sigma_xx <- var(o.fit$model[,varname])
+    }
 
   }
-
-  sigma_yy <- var(o.fit$model[,1])
   
+  ### VARIANCE OF OUTCOME ###
+  
+  if(wvar & length(o.fit$weights)>0) {
+    sigma_yy <- weighted.var(o.fit$model[,1], o.fit$model[,"(weights)"])
+  } else {
+    sigma_yy <- var(o.fit$model[,1])
+  }
+
   ### R2 OR WITHIN R2 ###
   
   if(within & length(fe)>0) {
@@ -133,7 +156,7 @@ oster <- function(o.fit, tilde.fit, varname, rm = NULL, delta = 1, beta = 0, wit
     
   } else if(within) {
     
-    warning("If within==TRUE, then regressions must include common controls or fe must be specified")
+    stop("If within=TRUE, then fe must be specified or o.fit and tilde.fit must have covariates in common")
     
   } else {
     
@@ -165,14 +188,14 @@ oster <- function(o.fit, tilde.fit, varname, rm = NULL, delta = 1, beta = 0, wit
   } else if (is.numeric(delta)) {
     bout <- dnot1cubsol(bo_m_bt, sigma_xx, delta, t_x, rm_m_rt_t_syy, rt_m_ro_t_syy, beta_tilde, beta_o)
   } else {
-    warning("delta must be numeric to calculate bias-adjusted beta")
+    stop("delta must be numeric to calculate bias-adjusted beta")
   }
 
   if(is.numeric(beta) & is.numeric(delta)) {
     dout <- bound(bo_m_bt, rt_m_ro_t_syy, rm_m_rt_t_syy, beta_tilde, beta, t_x, sigma_xx)
     rout <- rbound(bo_m_bt, rt_m_ro_t_syy, beta_tilde, beta, t_x, sigma_xx, sigma_yy, delta, r_tilde)
   } else {
-    warning("beta and delta must be numeric to calculate bounds for rsq_max and delta")
+    stop("beta and delta must be numeric to calculate bounds")
   }
 
   boutx <- bout$beta[1]
