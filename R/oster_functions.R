@@ -102,7 +102,7 @@ oster <- function(o.fit, tilde.fit, varname, rm = NULL, delta = 1, beta = 0) {
   ### CHECK FOR COVARIATES IN BOTH FITS AND RESIDUALISE X WRT TO THESE ###
 
   m <- intersect(colnames(o.fit$model), colnames(tilde.fit$model))
-  m <- m[!is.element(m, c(varname,colnames(o.fit$model)[1]))]
+  m <- m[!is.element(m, c(varname, "(weights)", colnames(o.fit$model)[1]))]
 
   if(length(m)>0) {
 
