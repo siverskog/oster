@@ -5,7 +5,7 @@
 #####  and unobservables: an R adaption of       ###############################
 #####  Stata's psacalc"                          ###############################
 #####                                            ###############################
-##### Version: 2020-06-02                        ###############################
+##### Version: 2020-06-03                        ###############################
 ##### Jonathan Siverskog                         ###############################
 ##### Linkoping University                       ###############################
 ################################################################################
@@ -29,6 +29,8 @@
 #'        if \code{rm>1} then \code{rmax = r_tilde*rm}, if \code{NULL} (default) then \code{rmax = 2*r_tilde - r_o}
 #' @param delta numeric specifying the proportional selection on observables and unobservables. Default is 1.
 #' @param beta numeric used to solve for bounds on maximum r-squared and delta. Default is 0.
+#' @param within logical specifying whether overall r-sqaured (default) or within r-squared is used
+#' @param fe character vector of names of variables used for calculating within r-squared. Default is to use \code{mcontrols}.
 #' @return list containing bias-adjusted beta, bounds on delta and maximum r-squared
 #'         for beta (and delta) supplied, and other inputs and output
 #' @details If covariates are included in both \code{o.fit} and \code{tilde.fit},
@@ -84,10 +86,10 @@
 #' c(z$input$beta_o, z$input$beta_tilde, z$beta, b13, z$rmax)
 #' 
 #' @export
-oster <- function(o.fit, tilde.fit, varname, rm = NULL, delta = 1, beta = 0) {
+oster <- function(o.fit, tilde.fit, varname, rm = NULL, delta = 1, beta = 0, within = FALSE, fe = NULL) {
 
   check_cases <- all(is.element(case.names(o.fit), case.names(tilde.fit))) & all(is.element(case.names(tilde.fit), case.names(o.fit)))
-  if(!check_cases) {message("short and intermediate fit do not include the same cases")}
+  if(!check_cases) {warning("short and intermediate fit do not include the same cases")}
 
   ### EXTRACT BETAS ###
 
@@ -116,8 +118,29 @@ oster <- function(o.fit, tilde.fit, varname, rm = NULL, delta = 1, beta = 0) {
   }
 
   sigma_yy <- var(o.fit$model[,1])
-  r_o <- summary(o.fit)$r.squared
-  r_tilde <- summary(tilde.fit)$r.squared
+  
+  ### R2 OR WITHIN R2 ###
+  
+  if(within & length(fe)>0) {
+    
+    r_o <- within.rsq(o.fit, fe)
+    r_tilde <- within.rsq(tilde.fit, fe)
+    
+  } else if(within & length(m)>0) {
+    
+    r_o <- within.rsq(o.fit, all.vars(formula(x.fit))[-1])
+    r_tilde <- within.rsq(tilde.fit, all.vars(formula(x.fit))[-1])
+    
+  } else if(within) {
+    
+    warning("If within==TRUE, then regressions must include common controls or fe must be specified")
+    
+  } else {
+    
+    r_o <- summary(o.fit)$r.squared
+    r_tilde <- summary(tilde.fit)$r.squared
+    
+  }
 
   ### SET R2-MAX ###
 
@@ -355,4 +378,88 @@ dnot1cubsol <- function(bo_m_bt, sigma_xx, delta, t_x, rm_m_rt_t_syy, rt_m_ro_t_
   names(beta) = names(dist) = names(mark) = NULL
   return(list(beta = beta, dist = dist, mark = mark))
 
+}
+
+############################################################################
+##### WEIGHTED VARIANCE ####################################################
+############################################################################
+
+#' Compute Weighted Variance
+#'
+#' what it says
+#'
+#' @param x a numeric vector of values
+#' @param w a numeric vector of weights
+#' @return numeric for weighted variance
+#' @examples
+#' ...
+weighted.var <- function(x, w, na.rm = FALSE) {
+  
+  if(length(w)!=length(n)) {warning("weights and values of unequal length")}
+  w <- (w/sum(w))*length(w)
+  ret <- sum(w*((x-weighted.mean(x, w))^2))/(length(x)-1)
+  return(ret)
+  
+}
+
+############################################################################
+##### WITHIN R-SQUARED #####################################################
+############################################################################
+
+#' Compute within R-squared
+#'
+#' what it says
+#'
+#' @param lm.fit an object of class \code{lm}.
+#' @param fe character vector specifying the variable names for the fixed effects
+#' @return numeric for within r-squared.
+#' @examples
+#' ...
+within.rsq <- function(lm.fit, fe) {
+  
+  frm <- model.frame(lm.fit)
+  
+  y <- model.extract(frm, component = "response")
+  X <- model.matrix(lm.fit)
+  w <- model.extract(frm, component = "weights")
+  
+  f <- formula(lm.fit)
+  f <- update(f, as.formula(paste(". ~", paste(paste("as.factor(", fe, ")", sep = ""), collapse = " + "))))
+  tmp <- update(lm.fit, f)
+  femat <- as.matrix(as.data.frame(model.matrix(tmp)))
+  cases <- case.names(lm.fit)
+  femat <- femat[is.element(rownames(femat), cases), , drop = FALSE]
+  
+  if(length(w)==0) {
+    
+    xfit <- lm.fit(x = femat, y = X)
+    yfit <- lm.fit(x = femat, y = y)
+    
+  } else {
+    
+    xfit <- lm.wfit(x = femat, y = X, w = w)
+    yfit <- lm.wfit(x = femat, y = y, w = w)
+    
+  }
+  
+  newX <- as.matrix(as.data.frame(xfit$residuals))
+  newX <- cbind(newX[,!is.element(colnames(newX), colnames(femat)), drop = FALSE], femat)
+  newy <- yfit$residuals
+  
+  if(length(w)==0) {
+    
+    newfit <- lm.fit(x = newX, y = newy)
+    sst <- var(newy)
+    sse <- var(newfit$fitted.values)
+    
+  } else {
+    
+    newfit <- lm.wfit(x = newX, y = newy, w = w)
+    sst <- weighted.var(newy, w)
+    sse <- weighted.var(newfit$fitted.values, w)
+    
+  }
+  
+  return(sse/sst)
+  
 }

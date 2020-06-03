@@ -4,7 +4,16 @@
 \alias{oster}
 \title{Oster bias-adjusted beta and bounds for maximum r-squared and delta}
 \usage{
-oster(o.fit, tilde.fit, varname, rm = NULL, delta = 1, beta = 0)
+oster(
+  o.fit,
+  tilde.fit,
+  varname,
+  rm = NULL,
+  delta = 1,
+  beta = 0,
+  within = FALSE,
+  fe = NULL
+)
 }
 \arguments{
 \item{o.fit}{object of class \code{lm} with fit for short regression}
@@ -19,6 +28,10 @@ if \code{rm>1} then \code{rmax = r_tilde*rm}, if \code{NULL} (default) then \cod
 \item{delta}{numeric specifying the proportional selection on observables and unobservables. Default is 1.}
 
 \item{beta}{numeric used to solve for bounds on maximum r-squared and delta. Default is 0.}
+
+\item{within}{logical specifying whether overall r-sqaured (default) or within r-squared is used}
+
+\item{fe}{character vector of names of variables used for calculating within r-squared. Default is to use \code{mcontrols}.}
 }
 \value{
 list containing bias-adjusted beta, bounds on delta and maximum r-squared
