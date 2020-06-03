@@ -34,17 +34,22 @@
 #' @param wvar logical specifying whether variances should be weighted. Ignored if
 #'        \code{o.fit} and \code{tilde.fit} do not include weights. Default is \code{FALSE};
 #'        this action is not performed by Stata's \code{psacalc}.
-#' @return list containing bias-adjusted beta, bounds on delta and maximum r-squared
-#'         for beta (and delta) supplied, and other inputs and output
+#' @return A list with components
+#'         \item{beta}{numeric; bias-adjusted beta}
+#'         \item{delta}{numeric; bound on delta for beta and rmax supplied}
+#'         \item{rmax}{numeric; bound on rmax for beta and delta supplied}
+#'         \item{output}{list; allroots contains a vector with all solutions for beta,
+#'          dist contains the (squared) distance from beta_tilde for each solution,
+#'          mark contains an indicator for each solution, 1 if the solution has
+#'          the opposite direction of bias compared to beta_tilde as beta_tilde
+#'          versus beta_o}
+#'         \item{input}{list; contains user supplied inputs, and inputs extracted from
+#'          the fits supplied}
 #' @details If covariates are included in both \code{o.fit} and \code{tilde.fit},
 #'          the treatment variable is residualised with respect to these;
 #'          compare to \code{mcontrols} in Stata's psacalc. There are 1 to 3
-#'          solutions for beta. All solution are reported in \code{allroots}.
-#'          \code{dist} is the (squared) distance of each solution to \code{beta_tilde}
-#'          and \code{mark} is 0 if the solution has the same direction of bias
-#'          compared to \code{beta_tilde} as \code{beta_tilde} versus \code{beta_o}.
-#'          \code{input} contains user supplied inputs, and inputs extracted from
-#'          the fits supplied.
+#'          solutions for beta. \code{oster()} returns the solution with minimum
+#'          \code{dist} where \code{mark} is 0.
 #' @references Oster, E. (2019). Unobservable selection and coefficient
 #'             stability: Theory and evidence. Journal of Business & Economic
 #'             Statistics, 37(2), 187-204
