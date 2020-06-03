@@ -41,7 +41,7 @@ the fits supplied.
 }
 \examples{
 
-# EXAMPLE REPRODUCABLE IN STATA'S PSACALC
+# EXAMPLE REPRODUCIBLE IN STATA'S PSACALC
 
 data(nunn)
  

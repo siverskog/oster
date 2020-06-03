@@ -50,7 +50,7 @@
 #'             revised 18 Dec 2016.
 #' @examples
 #' 
-#' # EXAMPLE REPRODUCABLE IN STATA'S PSACALC
+#' # EXAMPLE REPRODUCIBLE IN STATA'S PSACALC
 #' 
 #' data(nunn)
 #'  
