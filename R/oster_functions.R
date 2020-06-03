@@ -423,7 +423,7 @@ dnot1cubsol <- function(bo_m_bt, sigma_xx, delta, t_x, rm_m_rt_t_syy, rt_m_ro_t_
 #' ...
 weighted.var <- function(x, w, na.rm = FALSE) {
   
-  if(length(w)!=length(n)) {warning("weights and values of unequal length")}
+  if(length(w)!=length(x)) {warning("weights and values of unequal length")}
   w <- (w/sum(w))*length(w)
   ret <- sum(w*((x-weighted.mean(x, w))^2))/(length(x)-1)
   return(ret)
